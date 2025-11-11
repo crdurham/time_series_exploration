@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.42">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Cole Durham">
+
+<title>NFL Time Series</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="nfl_ts_analysis_files/libs/clipboard/clipboard.min.js"></script>
+<script src="nfl_ts_analysis_files/libs/quarto-html/quarto.js"></script>
+<script src="nfl_ts_analysis_files/libs/quarto-html/popper.min.js"></script>
+<script src="nfl_ts_analysis_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="nfl_ts_analysis_files/libs/quarto-html/anchor.min.js"></script>
+<link href="nfl_ts_analysis_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="nfl_ts_analysis_files/libs/quarto-html/quarto-syntax-highlighting-2f5df379a58b258e96c21c0638c20c03.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="nfl_ts_analysis_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="nfl_ts_analysis_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="nfl_ts_analysis_files/libs/bootstrap/bootstrap-c0367b04c37547644fece4185067e4a7.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">NFL Time Series</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Cole Durham </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="data-collection-and-description-qb-attempts-per-game" class="level3">
+<h3 class="anchored" data-anchor-id="data-collection-and-description-qb-attempts-per-game">1. Data Collection and Description: QB Attempts Per Game</h3>
+<p>Data is obtained from Pro Football Reference. In particular, the “Fantasy Ranks” page from 1970-2024 was scraped (see separate Jupyter notebook), e.g.&nbsp;<a href="https://www.pro-football-reference.com/years/1970/fantasy.htm">1970 Fantasy Ranks</a>. Included on these pages is a wide variety of regular season statistics, including the number of passing attempts made by a player throughout the season and the number of games they started or participated in. Of particular interest here is the <strong>number of passing attempts per game among the top 15 quarterbacks sorted by total pass attempts</strong>. A few clarifying statements.</p>
+<ul>
+<li><p>For a given season, quarterbacks are first ranked by the raw number of passing attempts they had. Even though we ultimately need to scale by number of games played, we want to exclude players not representative of consistent starting quarterbacks (e.g.&nbsp;someone who started one game but threw many passes).</p></li>
+<li><p>The top 15 quarterbacks by total pass attempts are selected in order to capture roughly half the league.</p></li>
+<li><p>The raw number of pass attempts is scaled by games played to account for the shift in regular season schedule length.</p></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>fantasy_data <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"fantasy_data.csv"</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>years <span class="ot">&lt;-</span> <span class="fu">unique</span>(fantasy_data<span class="sc">$</span>Year)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>avg_top15_by_year <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">length</span>(years))</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(avg_top15_by_year) <span class="ot">&lt;-</span> years</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (y <span class="cf">in</span> years) {</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    category_year <span class="ot">&lt;-</span> <span class="fu">subset</span>(fantasy_data, Year <span class="sc">==</span> y <span class="sc">&amp;</span> FantPos <span class="sc">==</span> <span class="st">"QB"</span>)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>    category_year <span class="ot">&lt;-</span> category_year[<span class="fu">order</span>(category_year<span class="sc">$</span>Passing_Att, <span class="at">decreasing =</span> <span class="cn">TRUE</span>), ]</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>    top15 <span class="ot">&lt;-</span> <span class="fu">head</span>(category_year, <span class="dv">15</span>)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    avg_among_top_15 <span class="ot">&lt;-</span> <span class="fu">mean</span>(top15<span class="sc">$</span>Passing_Att <span class="sc">/</span> top15<span class="sc">$</span>Games_G)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    avg_top15_by_year[<span class="fu">as.character</span>(y)] <span class="ot">&lt;-</span> avg_among_top_15</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>top_15_qb.att_ts <span class="ot">&lt;-</span> <span class="fu">ts</span>(<span class="at">data =</span> avg_top15_by_year, <span class="at">start =</span> <span class="dv">1970</span>, <span class="at">frequency =</span> <span class="dv">1</span>)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(top_15_qb.att_ts, <span class="at">main =</span> <span class="st">"QB Attempts Per Game"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-1-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>First observations about the data: values range between a minimum of 22.6381 attempts per game in 1973 and a maximum of 37.7581 in 2016; the time series is evidently nonstationary at least in the mean; there may be some periodic or seasonal dips, but it is difficult to say with certainty that they are not just noise.</p>
+</section>
+<section id="exploratory-data-analysis" class="level3">
+<h3 class="anchored" data-anchor-id="exploratory-data-analysis">2. Exploratory Data Analysis</h3>
+<p>Having visualized the series above, we want further confirmation that it is nonstationary. Our first effort in this direction is to plot the sample autocorrelation (ACF) function and partial autocorrelation (PACF) functions.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">acf</span>(top_15_qb.att_ts, <span class="at">main =</span> <span class="st">""</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>))</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">pacf</span>(top_15_qb.att_ts, <span class="at">main =</span> <span class="st">""</span>, <span class="at">ylim =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">pacf</span>(top_15_qb.att_ts, <span class="at">plot =</span> <span class="cn">FALSE</span>)[<span class="dv">1</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Partial autocorrelations of series 'top_15_qb.att_ts', by lag
+
+    1 
+0.912 </code></pre>
+</div>
+</div>
+<p>The ACF does not decay quickly, with significant correlation values (according to the critical value envelope) as far as lag 8. Moreover, the PACF at lag 1 is 0.912, providing some further support of nonstationarity.</p>
+<p>For now we will ignore the possibility of (conditional) heteroscedasticity. Instead, we proceed by first estimating the trend of the data and then fitting a model with seasonality modeled by trigonometric functions. Only later will we move toward a (S)ARIMA model.</p>
+</section>
+<section id="trend-regression-and-harmonic-seasonality-model" class="level3">
+<h3 class="anchored" data-anchor-id="trend-regression-and-harmonic-seasonality-model">3. Trend Regression and Harmonic Seasonality Model</h3>
+<p>We start with a simple model in which we fit the trend of the data using linear regression and estimate the seasonal component with trigonometric functions.</p>
+<section id="model-selection-estimate-of-trend" class="level4">
+<h4 class="anchored" data-anchor-id="model-selection-estimate-of-trend">3.1 Model Selection: Estimate of Trend</h4>
+<p>Two methods for visualizing and/or identifying the trend of the data which we will employ here are moving average and linear regression. First, we utilize 3, 5, and 9-point moving averages to provide varying levels of smooth approximation to the data trend.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">1</span>),<span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="fl">2.5</span>, <span class="dv">2</span>))</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Moving Average of QB Att/G</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">#ts.plot(top_15_qb.att_ts, ylab = "Att/G", main = "QB Historical Attempts Per Game")</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 3 point MA</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>x_movavg_3 <span class="ot">&lt;-</span> stats<span class="sc">::</span><span class="fu">filter</span>(top_15_qb.att_ts, <span class="at">sides =</span> <span class="dv">2</span>, <span class="fu">rep</span>(<span class="dv">1</span>,<span class="dv">3</span>)<span class="sc">/</span><span class="dv">3</span>)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(x_movavg_3, <span class="at">main =</span> <span class="st">"3 point Moving Average"</span>)</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">#5 point MA</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>x_movavg_5 <span class="ot">&lt;-</span> stats<span class="sc">::</span><span class="fu">filter</span>(top_15_qb.att_ts, <span class="at">sides =</span> <span class="dv">2</span>, <span class="fu">rep</span>(<span class="dv">1</span>,<span class="dv">5</span>)<span class="sc">/</span><span class="dv">5</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(x_movavg_5, <span class="at">main =</span> <span class="st">"5 point Moving Average"</span>)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="co">#7 point MA</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="co">#x_movavg_7 &lt;- filter(top_15_qb.att_ts, sides = 2, rep(1,7)/7)</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co">#ts.plot(x_movavg_7, main = "7 point Moving Average")</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="co">#One more for fun: 9 point MA</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>x_movavg_9 <span class="ot">&lt;-</span> stats<span class="sc">::</span><span class="fu">filter</span>(top_15_qb.att_ts, <span class="at">sides =</span> <span class="dv">2</span>, <span class="fu">rep</span>(<span class="dv">1</span>,<span class="dv">9</span>)<span class="sc">/</span><span class="dv">9</span>)</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(x_movavg_9, <span class="at">main =</span> <span class="st">"9 point Moving Average"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The three plots reveal (to varying degrees) the generally positive trend or upward movement of attempts per game as the role of passing in the NFL has grown. It is interesting to note that even in the case of 9-point moving average, there are still discernible periods in which pass attempts has increased rapidly but then subsequently plateaued.</p>
+<p>Next, for a more tangible representation of trend we will use standard regression techniques to fit four different models. To evaluate the predictive capabilities of each, we split the data into a training portion from 1970-2013 and a forecasting portion from 2014-2024.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Create training and forecasting sets</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>att.g_train <span class="ot">&lt;-</span> <span class="fu">window</span>(top_15_qb.att_ts, <span class="at">end=</span><span class="dv">2013</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>num_fit <span class="ot">&lt;-</span> <span class="fu">length</span>(att.g_train)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>att.g_fore <span class="ot">&lt;-</span> <span class="fu">window</span>(top_15_qb.att_ts, <span class="at">start=</span><span class="dv">2014</span>, <span class="at">frequency =</span> <span class="dv">1</span>)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>num_fore <span class="ot">&lt;-</span> <span class="fu">length</span>(att.g_fore)</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co">#Create training df with t, t^2/2!, sqrt(t)</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>train_trend_df <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="at">t_fit =</span> <span class="dv">1</span><span class="sc">:</span>num_fit,</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="at">t_sqfit =</span> t_fit<span class="sc">^</span><span class="dv">2</span><span class="sc">/</span><span class="fu">factorial</span>(<span class="dv">2</span>),</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="at">t_cubefit =</span> t_fit<span class="sc">^</span><span class="dv">3</span><span class="sc">/</span><span class="fu">factorial</span>(<span class="dv">3</span>),</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="at">t_sqrt =</span> <span class="fu">sqrt</span>(t_fit)</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="co">#Fit desired models: </span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a><span class="co">#(1) Linear - \beta_0 + \beta_1 t </span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a><span class="co">#(2) Quadratic - \beta_0 + \beta_1 t + \beta_2 t^2/2</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="co">#(3) Cubic - \beta_0 + \beta_1 t + \beta_2 t^2/2 + \beta_3 t^3/3!</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a><span class="co">#(4) Square root model - \beta_0 + \beta_1 \sqrt(t)</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>mlr.line <span class="ot">&lt;-</span> <span class="fu">lm</span>(att.g_train <span class="sc">~</span> t_fit, <span class="at">data =</span> train_trend_df)</span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>mlr.quadr <span class="ot">&lt;-</span> <span class="fu">lm</span>(att.g_train <span class="sc">~</span> t_fit <span class="sc">+</span> t_sqfit, <span class="at">data =</span> train_trend_df)</span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>mlr.cubic <span class="ot">&lt;-</span> <span class="fu">lm</span>(att.g_train <span class="sc">~</span> t_fit <span class="sc">+</span> t_sqfit <span class="sc">+</span> t_cubefit, <span class="at">data =</span> train_trend_df)</span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>mlr.sqrt <span class="ot">&lt;-</span> <span class="fu">lm</span>(att.g_train <span class="sc">~</span> t_sqrt, <span class="at">data =</span> train_trend_df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We examine the performance of each model and its residuals on the training set before considering forecast evaluation criteria.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mlr.line)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = att.g_train ~ t_fit, data = train_trend_df)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-3.5347 -1.2746 -0.1186  1.5142  3.5134 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 25.17395    0.58045   43.37  &lt; 2e-16 ***
+t_fit        0.24973    0.02247   11.12 4.35e-14 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.892 on 42 degrees of freedom
+Multiple R-squared:  0.7463,    Adjusted R-squared:  0.7403 
+F-statistic: 123.6 on 1 and 42 DF,  p-value: 4.35e-14</code></pre>
+</div>
+</div>
+<p>The linear model takes the form <span class="math inline">\(25.1740 + 0.2497 t\)</span>, with the coefficient on the <span class="math inline">\(t\)</span>-term being significant according to <span class="math inline">\(p\)</span>-value. With an adjusted <span class="math inline">\(R\)</span>-squared value of approximately 0.74, the model is able to explain 74% of the variance in attempts per game over time. Viewing diagnostic plots, we see some nonlinear aspect(s) of the trend have not been captured:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Residual Diagnostic Plots for mlr.lin</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="fl">2.5</span>, <span class="dv">2</span>)) <span class="co"># plot 4 figures, 2 in each of 2 rows</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mlr.line, <span class="at">main =</span> <span class="st">""</span>, <span class="at">which =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Next, we want to see if the quadratic model captures the nonlinearity of the trend any better than the linear model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mlr.quadr)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = att.g_train ~ t_fit + t_sqfit, data = train_trend_df)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-3.8942 -1.0353 -0.4776  1.2058  2.9964 
+
+Coefficients:
+             Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 23.295867   0.821450  28.359  &lt; 2e-16 ***
+t_fit        0.494693   0.084199   5.875 6.51e-07 ***
+t_sqfit     -0.010887   0.003629  -3.000  0.00457 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.734 on 41 degrees of freedom
+Multiple R-squared:  0.792, Adjusted R-squared:  0.7818 
+F-statistic: 78.05 on 2 and 41 DF,  p-value: 1.05e-14</code></pre>
+</div>
+</div>
+<p>The model takes the form <span class="math inline">\(23.2959 + 0.4947t-0.0109\left(\frac{t^2}{2}\right)\)</span>, with both coefficients being significant. The negative <span class="math inline">\(t^2\)</span> term is expected, since the number of pass attempts per game in recent years has leveled off or even decreased slightly. The adjusted <span class="math inline">\(R\)</span>-squared of 0.78 here shows a 4% improvement in variance explained. The same diagnostic plots from before still show patterns in the residuals.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Residual Diagnostic Plots for mlr.quadr</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="fl">2.5</span>, <span class="dv">2</span>)) <span class="co"># plot 4 figures, 2 in each of 2 rows</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mlr.quadr, <span class="at">main =</span> <span class="st">""</span>, <span class="at">which =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Next, the most complicated of the polynomial models: the cubic.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mlr.cubic)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = att.g_train ~ t_fit + t_sqfit + t_cubefit, data = train_trend_df)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-3.8178 -0.9433  0.0475  1.0700  3.4094 
+
+Coefficients:
+              Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 20.7301570  0.9974718  20.783  &lt; 2e-16 ***
+t_fit        1.1427528  0.1898141   6.020 4.42e-07 ***
+t_sqfit     -0.0820912  0.0194851  -4.213 0.000139 ***
+t_cubefit    0.0031646  0.0008545   3.704 0.000642 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.515 on 40 degrees of freedom
+Multiple R-squared:  0.8451,    Adjusted R-squared:  0.8335 
+F-statistic: 72.74 on 3 and 40 DF,  p-value: 3.001e-16</code></pre>
+</div>
+</div>
+<p>The model appears as <span class="math inline">\(20.7302 + 1.1428t-0.0821(t^2/2) + 0.0032(t^3/3!)\)</span>, where all coefficients are deemed significant. The adjusted <span class="math inline">\(R\)</span>-squared of 0.83 indicates another 5% improvement in explained variance.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Residual Diagnostic Plots for mlr.quadr</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="fl">2.5</span>, <span class="dv">2</span>)) <span class="co"># plot 4 figures, 2 in each of 2 rows</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mlr.cubic, <span class="at">main =</span> <span class="st">""</span>, <span class="at">which =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The diagnostic plots show a bit less structure, further supporting the strength of the model fit to the training set. Finally, we take a closer look at the model which includes a square root term and intercept.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mlr.sqrt)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = att.g_train ~ t_sqrt, data = train_trend_df)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-3.5459 -1.1177 -0.1777  1.3928  2.9293 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)  21.1060     0.7939   26.59  &lt; 2e-16 ***
+t_sqrt        2.1560     0.1674   12.88 3.52e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.689 on 42 degrees of freedom
+Multiple R-squared:  0.798, Adjusted R-squared:  0.7932 
+F-statistic: 165.9 on 1 and 42 DF,  p-value: 3.517e-16</code></pre>
+</div>
+</div>
+<p>This model has the functional form <span class="math inline">\(21.1060 + 2.1560\sqrt{t}\)</span> with significant coefficients (<span class="math inline">\(p&lt;&lt;0.05\)</span>). The adjusted <span class="math inline">\(R\)</span>-squared of 0.79 is better than the linear or quadratic models, but not as strong as the cubic model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Residual Diagnostic Plots for mlr.sqrt</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="fl">2.5</span>, <span class="dv">2</span>)) <span class="co"># plot 4 figures, 2 in each of 2 rows</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(mlr.sqrt, <span class="at">main =</span> <span class="st">""</span>, <span class="at">which =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The residuals still show a fairly distinct pattern. We can plot the prediction curves for each model, first with only the training data.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Make plots showing fitted curves (4 plots)</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="fl">2.5</span>, <span class="dv">2</span>))</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="co">#Create a table with xfit and line fit models; access the fitted values using model$fitted</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>plin <span class="ot">&lt;-</span> <span class="fu">cbind</span>(att.g_train, mlr.line<span class="sc">$</span>fitted)</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="co">#Use ts.plot on plin; specify the xfit plot is in black while model is in red </span></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(plin, <span class="at">main=</span><span class="st">"Linear"</span>, <span class="at">col=</span><span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">'red'</span>), <span class="at">ylab=</span><span class="st">"Att/G"</span>)</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a><span class="co">#Same idea for quadratic and cubic fits </span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>pquad <span class="ot">&lt;-</span> <span class="fu">cbind</span>(att.g_train, mlr.quadr<span class="sc">$</span>fitted) </span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(pquad, <span class="at">main=</span><span class="st">"Quadratic"</span>, <span class="at">col=</span><span class="fu">c</span>(<span class="st">"black"</span>,<span class="st">'red'</span>))</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>pcub <span class="ot">&lt;-</span> <span class="fu">cbind</span>(att.g_train, mlr.cubic<span class="sc">$</span>fitted) </span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(pcub, <span class="at">main=</span><span class="st">"Cubic"</span>, <span class="at">col=</span><span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">'red'</span>), <span class="at">ylab =</span> <span class="st">"Att/G"</span>)</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>psqrt <span class="ot">&lt;-</span> <span class="fu">cbind</span>(att.g_train, mlr.sqrt<span class="sc">$</span>fitted) </span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(psqrt, <span class="at">main=</span><span class="st">"Square Root"</span>, <span class="at">col=</span><span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">'red'</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Visually the cubic trend model does capture the uptick in attempts from 2009-2013 better than the other models; however, we know that the seasons 2014-2024 do not continue to follow this pattern, so incorporating the forecast set will tell a different story.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>trend_fore_df <span class="ot">&lt;-</span> <span class="fu">tibble</span>(<span class="at">t_fit =</span> (num_fit <span class="sc">+</span> <span class="dv">1</span>)<span class="sc">:</span>(<span class="fu">length</span>(top_15_qb.att_ts)),</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="at">t_sqfit =</span> t_fit<span class="sc">^</span><span class="dv">2</span><span class="sc">/</span><span class="fu">factorial</span>(<span class="dv">2</span>),</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="at">t_cubefit =</span> t_fit<span class="sc">^</span><span class="dv">3</span><span class="sc">/</span><span class="fu">factorial</span>(<span class="dv">3</span>),</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="at">t_sqrt =</span> <span class="fu">sqrt</span>(t_fit))</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a><span class="co">#Make dataframe of forecast times -- t only</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a><span class="co"># use predict function </span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>pfore.lin  <span class="ot">&lt;-</span> <span class="fu">predict</span>(mlr.line,  <span class="at">newdata =</span> trend_fore_df,       <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>pfore.quad <span class="ot">&lt;-</span> <span class="fu">predict</span>(mlr.quadr, <span class="at">newdata =</span> trend_fore_df,     <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>pfore.cub  <span class="ot">&lt;-</span> <span class="fu">predict</span>(mlr.cubic, <span class="at">newdata =</span> trend_fore_df,   <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>pfore.sqrt <span class="ot">&lt;-</span> <span class="fu">predict</span>(mlr.sqrt,  <span class="at">newdata =</span> trend_fore_df, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a><span class="co">#Plot of time series with fits and out-of-sample forecasts</span></span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Linear Trend Model fits and forecasts</span></span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>linff <span class="ot">&lt;-</span> <span class="fu">c</span>(mlr.line<span class="sc">$</span>fitted, pfore.lin<span class="sc">$</span>fit)</span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Quadratic Trend Model fits and forecasts</span></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>quadff <span class="ot">&lt;-</span> <span class="fu">c</span>(mlr.quadr<span class="sc">$</span>fitted, pfore.quad<span class="sc">$</span>fit)</span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Cubic Trend Model fits and forecasts</span></span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>cubff <span class="ot">&lt;-</span> <span class="fu">c</span>(mlr.cubic<span class="sc">$</span>fitted, pfore.cub<span class="sc">$</span>fit)</span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a><span class="co">#Sqrt trend model fits and forecasts</span></span>
+<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>sqrtff <span class="ot">&lt;-</span> <span class="fu">c</span>(mlr.sqrt<span class="sc">$</span>fitted, pfore.sqrt<span class="sc">$</span>fit)</span>
+<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a><span class="co"># observed data: top_15_qb.att_ts from 1970-2024 </span></span>
+<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a><span class="co"># Bind observed data and fits+forecasts</span></span>
+<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a>obslin <span class="ot">&lt;-</span> <span class="fu">cbind</span>(top_15_qb.att_ts, linff)</span>
+<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a>obsquad <span class="ot">&lt;-</span> <span class="fu">cbind</span>(top_15_qb.att_ts, quadff)</span>
+<span id="cb20-31"><a href="#cb20-31" aria-hidden="true" tabindex="-1"></a>obscub <span class="ot">&lt;-</span> <span class="fu">cbind</span>(top_15_qb.att_ts, cubff)</span>
+<span id="cb20-32"><a href="#cb20-32" aria-hidden="true" tabindex="-1"></a>obssqrt <span class="ot">&lt;-</span> <span class="fu">cbind</span>(top_15_qb.att_ts, sqrtff)</span>
+<span id="cb20-33"><a href="#cb20-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-34"><a href="#cb20-34" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="fl">2.5</span>, <span class="dv">2</span>))</span>
+<span id="cb20-35"><a href="#cb20-35" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(obslin, <span class="at">main =</span> <span class="st">"Linear Trend Model"</span>, <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"blue"</span>), </span>
+<span id="cb20-36"><a href="#cb20-36" aria-hidden="true" tabindex="-1"></a>        <span class="at">ylab =</span> <span class="st">"Att/G"</span>)</span>
+<span id="cb20-37"><a href="#cb20-37" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">time</span>(top_15_qb.att_ts)[num_fit], <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="st">"dashed"</span>)</span>
+<span id="cb20-38"><a href="#cb20-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-39"><a href="#cb20-39" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(obsquad, <span class="at">main =</span> <span class="st">"Quadratic Trend Model"</span>, <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"blue"</span>))</span>
+<span id="cb20-40"><a href="#cb20-40" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">time</span>(top_15_qb.att_ts)[num_fit], <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="st">"dashed"</span>)</span>
+<span id="cb20-41"><a href="#cb20-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-42"><a href="#cb20-42" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(obscub, <span class="at">main =</span> <span class="st">"Cubic Trend Model"</span>, <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"blue"</span>),</span>
+<span id="cb20-43"><a href="#cb20-43" aria-hidden="true" tabindex="-1"></a>        <span class="at">ylab=</span><span class="st">"Att/G"</span>)</span>
+<span id="cb20-44"><a href="#cb20-44" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">time</span>(top_15_qb.att_ts)[num_fit], <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="st">"dashed"</span>)</span>
+<span id="cb20-45"><a href="#cb20-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-46"><a href="#cb20-46" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(obssqrt, <span class="at">main =</span> <span class="st">"Square Root Trend Model"</span>, <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"blue"</span>))</span>
+<span id="cb20-47"><a href="#cb20-47" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">v =</span> <span class="fu">time</span>(top_15_qb.att_ts)[num_fit], <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="st">"dashed"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The red line in the plots above indicates the end of the training portion. As feared, the cubic model outgrows the data in the forecast portion, as does the linear model. The square root model does a somewhat better job because of its slower growth, and the quadratic model recognizes the downturn in the data. We can evaluate model forecast performance with standard metrics.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>nfore <span class="ot">&lt;-</span> <span class="fu">length</span>(att.g_fore)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Forecast/Prediction errors: Observed - Predicted</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>efore.lin <span class="ot">&lt;-</span> att.g_fore <span class="sc">-</span> pfore.lin<span class="sc">$</span>fit</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>efore.quad <span class="ot">&lt;-</span> att.g_fore <span class="sc">-</span> pfore.quad<span class="sc">$</span>fit</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>efore.cub <span class="ot">&lt;-</span> att.g_fore <span class="sc">-</span> pfore.cub<span class="sc">$</span>fit</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>efore.sqrt <span class="ot">&lt;-</span> att.g_fore <span class="sc">-</span> pfore.sqrt<span class="sc">$</span>fit</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Forecast evaluation criteria</span></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>me.lin <span class="ot">&lt;-</span> <span class="fu">mean</span>(efore.lin)                       <span class="co"># Mean Error</span></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>mpe.lin <span class="ot">&lt;-</span> <span class="dv">100</span><span class="sc">*</span>(<span class="fu">mean</span>(efore.lin<span class="sc">/</span>att.g_fore))          <span class="co"># Mean Percent Error</span></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>mse.lin <span class="ot">&lt;-</span> <span class="fu">sum</span>(efore.lin<span class="sc">**</span><span class="dv">2</span>)<span class="sc">/</span>nfore              <span class="co"># Mean Squared Error</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>mae.lin <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">abs</span>(efore.lin))                 <span class="co"># Mean Absolute Error</span></span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>mape.lin <span class="ot">&lt;-</span> <span class="dv">100</span><span class="sc">*</span>(<span class="fu">mean</span>(<span class="fu">abs</span>((efore.lin)<span class="sc">/</span>att.g_fore)))  <span class="co"># Mean Absolute Percent Error </span></span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>fec.lin <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">linear =</span> <span class="fu">rbind</span>(me.lin, mpe.lin, </span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>                                      mse.lin, mae.lin, mape.lin), </span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a>                      <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">"me"</span>, <span class="st">"mpe"</span>, <span class="st">"mse"</span>, <span class="st">"mae"</span>, <span class="st">"mape"</span>))</span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Forecast evaluation criteria</span></span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a>me.quad <span class="ot">&lt;-</span> <span class="fu">mean</span>(efore.quad)                       <span class="co"># Mean Error</span></span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a>mpe.quad <span class="ot">&lt;-</span> <span class="dv">100</span><span class="sc">*</span>(<span class="fu">mean</span>(efore.quad<span class="sc">/</span>att.g_fore))          <span class="co"># Mean Percent Error</span></span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a>mse.quad <span class="ot">&lt;-</span> <span class="fu">sum</span>(efore.quad<span class="sc">**</span><span class="dv">2</span>)<span class="sc">/</span>nfore              <span class="co"># Mean Squared Error</span></span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>mae.quad <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">abs</span>(efore.quad))                 <span class="co"># Mean Absolute Error</span></span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>mape.quad <span class="ot">&lt;-</span> <span class="dv">100</span><span class="sc">*</span>(<span class="fu">mean</span>(<span class="fu">abs</span>((efore.quad)<span class="sc">/</span>att.g_fore)))  <span class="co"># Mean Absolute Percent Error </span></span>
+<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a>fec.quad <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">quadratic =</span> <span class="fu">rbind</span>(me.quad, mpe.quad, </span>
+<span id="cb21-26"><a href="#cb21-26" aria-hidden="true" tabindex="-1"></a>                                      mse.quad, mae.quad, mape.quad), </span>
+<span id="cb21-27"><a href="#cb21-27" aria-hidden="true" tabindex="-1"></a>                      <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">"me"</span>, <span class="st">"mpe"</span>, <span class="st">"mse"</span>, <span class="st">"mae"</span>, <span class="st">"mape"</span>))</span>
+<span id="cb21-28"><a href="#cb21-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-29"><a href="#cb21-29" aria-hidden="true" tabindex="-1"></a><span class="co"># Forecast evaluation criteria</span></span>
+<span id="cb21-30"><a href="#cb21-30" aria-hidden="true" tabindex="-1"></a>me.cube <span class="ot">&lt;-</span> <span class="fu">mean</span>(efore.cub)                       <span class="co"># Mean Error</span></span>
+<span id="cb21-31"><a href="#cb21-31" aria-hidden="true" tabindex="-1"></a>mpe.cube <span class="ot">&lt;-</span> <span class="dv">100</span><span class="sc">*</span>(<span class="fu">mean</span>(efore.cub<span class="sc">/</span>att.g_fore))          <span class="co"># Mean Percent Error</span></span>
+<span id="cb21-32"><a href="#cb21-32" aria-hidden="true" tabindex="-1"></a>mse.cube <span class="ot">&lt;-</span> <span class="fu">sum</span>(efore.cub<span class="sc">**</span><span class="dv">2</span>)<span class="sc">/</span>nfore              <span class="co"># Mean Squared Error</span></span>
+<span id="cb21-33"><a href="#cb21-33" aria-hidden="true" tabindex="-1"></a>mae.cube <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">abs</span>(efore.cub))                 <span class="co"># Mean Absolute Error</span></span>
+<span id="cb21-34"><a href="#cb21-34" aria-hidden="true" tabindex="-1"></a>mape.cube <span class="ot">&lt;-</span> <span class="dv">100</span><span class="sc">*</span>(<span class="fu">mean</span>(<span class="fu">abs</span>((efore.cub)<span class="sc">/</span>att.g_fore)))  <span class="co"># Mean Absolute Percent Error </span></span>
+<span id="cb21-35"><a href="#cb21-35" aria-hidden="true" tabindex="-1"></a>fec.cube <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">cubic =</span> <span class="fu">rbind</span>(me.cube, mpe.cube, </span>
+<span id="cb21-36"><a href="#cb21-36" aria-hidden="true" tabindex="-1"></a>                                      mse.cube, mae.cube, mape.cube), </span>
+<span id="cb21-37"><a href="#cb21-37" aria-hidden="true" tabindex="-1"></a>                      <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">"me"</span>, <span class="st">"mpe"</span>, <span class="st">"mse"</span>, <span class="st">"mae"</span>, <span class="st">"mape"</span>))</span>
+<span id="cb21-38"><a href="#cb21-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-39"><a href="#cb21-39" aria-hidden="true" tabindex="-1"></a><span class="co"># Forecast evaluation criteria</span></span>
+<span id="cb21-40"><a href="#cb21-40" aria-hidden="true" tabindex="-1"></a>me.sqrt <span class="ot">&lt;-</span> <span class="fu">mean</span>(efore.sqrt)                       <span class="co"># Mean Error</span></span>
+<span id="cb21-41"><a href="#cb21-41" aria-hidden="true" tabindex="-1"></a>mpe.sqrt <span class="ot">&lt;-</span> <span class="dv">100</span><span class="sc">*</span>(<span class="fu">mean</span>(efore.sqrt<span class="sc">/</span>att.g_fore))          <span class="co"># Mean Percent Error</span></span>
+<span id="cb21-42"><a href="#cb21-42" aria-hidden="true" tabindex="-1"></a>mse.sqrt <span class="ot">&lt;-</span> <span class="fu">sum</span>(efore.sqrt<span class="sc">**</span><span class="dv">2</span>)<span class="sc">/</span>nfore              <span class="co"># Mean Squared Error</span></span>
+<span id="cb21-43"><a href="#cb21-43" aria-hidden="true" tabindex="-1"></a>mae.sqrt <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">abs</span>(efore.sqrt))                 <span class="co"># Mean Absolute Error</span></span>
+<span id="cb21-44"><a href="#cb21-44" aria-hidden="true" tabindex="-1"></a>mape.sqrt <span class="ot">&lt;-</span> <span class="dv">100</span><span class="sc">*</span>(<span class="fu">mean</span>(<span class="fu">abs</span>((efore.sqrt)<span class="sc">/</span>att.g_fore)))  <span class="co"># Mean Absolute Percent Error </span></span>
+<span id="cb21-45"><a href="#cb21-45" aria-hidden="true" tabindex="-1"></a>fec.sqrt <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">sqroot =</span> <span class="fu">rbind</span>(me.sqrt, mpe.sqrt, </span>
+<span id="cb21-46"><a href="#cb21-46" aria-hidden="true" tabindex="-1"></a>                                      mse.sqrt, mae.sqrt, mape.sqrt), </span>
+<span id="cb21-47"><a href="#cb21-47" aria-hidden="true" tabindex="-1"></a>                      <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">"me"</span>, <span class="st">"mpe"</span>, <span class="st">"mse"</span>, <span class="st">"mae"</span>, <span class="st">"mape"</span>))</span>
+<span id="cb21-48"><a href="#cb21-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-49"><a href="#cb21-49" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(fec.lin, <span class="at">digits =</span> <span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      linear
+me   -2.0208
+mpe  -5.9087
+mse   8.3657
+mae   2.3018
+mape  6.6606</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(fec.quad, <span class="at">digits =</span> <span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     quadratic
+me      1.2727
+mpe     3.4291
+mse     3.2828
+mae     1.5838
+mape    4.3779</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(fec.cube, <span class="at">digits =</span> <span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        cubic
+me    -5.9244
+mpe  -17.0935
+mse   54.2081
+mae    5.9244
+mape  17.0935</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(fec.sqrt, <span class="at">digits =</span> <span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      sqroot
+me   -0.7040
+mpe  -2.1818
+mse   3.7380
+mae   1.4953
+mape  4.3051</code></pre>
+</div>
+</div>
+<p>According to these criterion, the square root and quadratic models have roughly the same forecast performance. We can also use information based criterion for model selection, e.g.&nbsp;the Akaike information criterion (AIC) or Bayesian information criterion (BIC).</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Linear Trend Model, Sqrt Model: k=1</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>k_1 <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>k_2 <span class="ot">&lt;-</span> <span class="dv">2</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>k_3 <span class="ot">&lt;-</span> <span class="dv">3</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Akaike Information Criterion,AIC </span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>AIC.lin <span class="ot">&lt;-</span> <span class="fu">AIC</span>(mlr.line, <span class="at">k=</span>k_1)</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>AIC.quad <span class="ot">&lt;-</span> <span class="fu">AIC</span>(mlr.quadr, <span class="at">k=</span>k_2)</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>AIC.cubic <span class="ot">&lt;-</span> <span class="fu">AIC</span>(mlr.cubic, <span class="at">k=</span>k_3)</span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>AIC.sqrt <span class="ot">&lt;-</span> <span class="fu">AIC</span>(mlr.sqrt, <span class="at">k=</span>k_1)</span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>AIC_vals <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">AIC =</span> <span class="fu">rbind</span>(AIC.lin, AIC.quad, </span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>                                      AIC.cubic, AIC.sqrt), </span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a>                      <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">"Linear"</span>, <span class="st">"Quadratic"</span>, <span class="st">"Cubic"</span>, <span class="st">"Square Root"</span>))</span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a>AIC_vals</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                 AIC
+Linear      181.9499
+Quadratic   178.2156
+Cubic       172.2424
+Square Root 171.9216</code></pre>
+</div>
+</div>
+<p>Of these, the AIC model prefers the square root model. We will select the square root estimate of the trend, and next add in a seasonal component if it proves to be applicable.</p>
+</section>
+<section id="model-selection-seasonal-component" class="level4">
+<h4 class="anchored" data-anchor-id="model-selection-seasonal-component">3.2 Model Selection: Seasonal Component</h4>
+<p>We will use trigonometric functions to estimate any seasonal patterns in the data. For instance, it could be argued that the data goes through a repeating pattern every number of years, though it is not clear what that number of years is. With that in mind:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Maximum period willing to consider</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>per <span class="ot">&lt;-</span> <span class="dv">20</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (n <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>per) {</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>  c1fit_0 <span class="ot">&lt;-</span> <span class="fu">cos</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> train_trend_df<span class="sc">$</span>t_fit <span class="sc">/</span> n)</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>  s1fit_0 <span class="ot">&lt;-</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> train_trend_df<span class="sc">$</span>t_fit <span class="sc">/</span> n)</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>  att.g_trig1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(att.g_train <span class="sc">~</span> train_trend_df<span class="sc">$</span>t_sqrt <span class="sc">+</span> c1fit_0 <span class="sc">+</span> s1fit_0)</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"n = "</span>, n, <span class="st">"R^2 = "</span>, <span class="fu">summary</span>(att.g_trig1)<span class="sc">$</span>adj.r.squared))</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "n =  1 R^2 =  0.788954521382315"
+[1] "n =  2 R^2 =  0.783409733413258"
+[1] "n =  3 R^2 =  0.783799163496362"
+[1] "n =  4 R^2 =  0.78968234894235"
+[1] "n =  5 R^2 =  0.789046501269144"
+[1] "n =  6 R^2 =  0.793649135930864"
+[1] "n =  7 R^2 =  0.800501241662951"
+[1] "n =  8 R^2 =  0.818555806557192"
+[1] "n =  9 R^2 =  0.790986636198813"
+[1] "n =  10 R^2 =  0.788835125543901"
+[1] "n =  11 R^2 =  0.793587581040882"
+[1] "n =  12 R^2 =  0.783053108928284"
+[1] "n =  13 R^2 =  0.799126899606411"
+[1] "n =  14 R^2 =  0.832482018144459"
+[1] "n =  15 R^2 =  0.857132925357403"
+[1] "n =  16 R^2 =  0.859764440553288"
+[1] "n =  17 R^2 =  0.842537731740622"
+[1] "n =  18 R^2 =  0.820110090926656"
+[1] "n =  19 R^2 =  0.803889752022249"
+[1] "n =  20 R^2 =  0.796697595820688"</code></pre>
+</div>
+</div>
+<p>The largest adjusted <span class="math inline">\(R\)</span>-squared occurs for <span class="math inline">\(n=16\)</span>, indicating a period of 16 years. To see the full summary for this model, we rerun the same phrase but with fixed <span class="math inline">\(n=16\)</span> and find that all coefficients are significant according to their <span class="math inline">\(p\)</span>-values.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Model 1a</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>n_0 <span class="ot">&lt;-</span> <span class="dv">16</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>c1fit_0 <span class="ot">&lt;-</span> <span class="fu">cos</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> train_trend_df<span class="sc">$</span>t_fit <span class="sc">/</span> n_0)</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>s1fit_0 <span class="ot">&lt;-</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> train_trend_df<span class="sc">$</span>t_fit <span class="sc">/</span> n_0)</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>t_sqrt <span class="ot">&lt;-</span> train_trend_df<span class="sc">$</span>t_sqrt</span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>att.g_trig1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(att.g_train <span class="sc">~</span> t_sqrt <span class="sc">+</span> c1fit_0 <span class="sc">+</span> s1fit_0)</span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(att.g_trig1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = att.g_train ~ t_sqrt + c1fit_0 + s1fit_0)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.88103 -0.72136 -0.08461  0.87861  3.01469 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)  21.5220     0.6730  31.977  &lt; 2e-16 ***
+t_sqrt        2.0882     0.1421  14.692  &lt; 2e-16 ***
+c1fit_0       0.8545     0.3040   2.811 0.007607 ** 
+s1fit_0      -1.1569     0.3010  -3.843 0.000426 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.391 on 40 degrees of freedom
+Multiple R-squared:  0.8695,    Adjusted R-squared:  0.8598 
+F-statistic: 88.88 on 3 and 40 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<p>We plot the predicted values for this model on the training set, and it does seem to follow the recurrent peaks and valleys of the series.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(<span class="fu">cbind</span>(att.g_trig1<span class="sc">$</span>fitted,att.g_train), <span class="at">col=</span> <span class="fu">c</span>(<span class="st">"red"</span>, <span class="st">"black"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Residual Diagnostic Plots for co2_trig1</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="fl">2.5</span>, <span class="dv">2</span>)) <span class="co"># plot 4 figures, 2 in each of 2 rows</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(att.g_trig1, <span class="at">main =</span> <span class="st">""</span>, <span class="at">which =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-21-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Several of the residuals (1998, 1987 in particular) of <code>att.g_trig1</code> are highly influential, lending themselves to the consistent (though still expected) presence of structure in the residual plot. Before evaluating the performance of <code>att.g_trig1</code> on the forecast set, it is reasonable to try including more harmonics to see if the trend, low-frequency harmonic (16 year period), and high-frequency harmonic(s) are more capable of describing the data.</p>
+<p>It is possible to add many harmonic pairs of trigonometric functions, but of course a greater number of parameters reduces parsimony, increases the possibility of overfitting, and may not lead to a significant increase in explained variance. For these reasons we will fit a model denoted 1b with two harmonics and model 1c with three harmonics. Then, using <span class="math inline">\(F\)</span>-tests plus information and forecast criterion, we will select the best model.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Models 1b and 1c: 2 and 3 harmonics</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>seasonal_train_df <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a><span class="co">#Harmonic 1</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a><span class="at">t_sqrt =</span> t_sqrt,</span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a><span class="at">t_fit =</span> train_trend_df<span class="sc">$</span>t_fit,</span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a><span class="at">c1fit =</span> <span class="fu">cos</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> t_fit <span class="sc">/</span> n_0),</span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a><span class="at">s1fit =</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> t_fit <span class="sc">/</span> n_0),  </span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a><span class="co">#Harmonic 2</span></span>
+<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a><span class="at">c2fit =</span> <span class="fu">cos</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> <span class="dv">2</span> <span class="sc">*</span> t_fit <span class="sc">/</span> n_0),</span>
+<span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a><span class="at">s2fit =</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> <span class="dv">2</span> <span class="sc">*</span> t_fit <span class="sc">/</span> n_0),</span>
+<span id="cb37-14"><a href="#cb37-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-15"><a href="#cb37-15" aria-hidden="true" tabindex="-1"></a><span class="co">#Harmonic 3</span></span>
+<span id="cb37-16"><a href="#cb37-16" aria-hidden="true" tabindex="-1"></a><span class="at">c3fit =</span> <span class="fu">cos</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> <span class="dv">3</span> <span class="sc">*</span> t_fit <span class="sc">/</span> n_0),</span>
+<span id="cb37-17"><a href="#cb37-17" aria-hidden="true" tabindex="-1"></a><span class="at">s3fit =</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> <span class="dv">3</span> <span class="sc">*</span> t_fit <span class="sc">/</span> n_0)</span>
+<span id="cb37-18"><a href="#cb37-18" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb37-19"><a href="#cb37-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-20"><a href="#cb37-20" aria-hidden="true" tabindex="-1"></a><span class="co">#Model 1a</span></span>
+<span id="cb37-21"><a href="#cb37-21" aria-hidden="true" tabindex="-1"></a>att.g_trig1 <span class="ot">&lt;-</span> <span class="fu">lm</span>(att.g_train <span class="sc">~</span> t_sqrt <span class="sc">+</span> c1fit <span class="sc">+</span> s1fit, <span class="at">data =</span> seasonal_train_df)</span>
+<span id="cb37-22"><a href="#cb37-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-23"><a href="#cb37-23" aria-hidden="true" tabindex="-1"></a><span class="co">#Model 1b</span></span>
+<span id="cb37-24"><a href="#cb37-24" aria-hidden="true" tabindex="-1"></a>att.g_trig2 <span class="ot">&lt;-</span> <span class="fu">lm</span>(att.g_train <span class="sc">~</span> t_sqrt <span class="sc">+</span> c1fit <span class="sc">+</span> s1fit <span class="sc">+</span> c2fit <span class="sc">+</span> s2fit, <span class="at">data =</span> seasonal_train_df)</span>
+<span id="cb37-25"><a href="#cb37-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-26"><a href="#cb37-26" aria-hidden="true" tabindex="-1"></a><span class="co">#Model 1c</span></span>
+<span id="cb37-27"><a href="#cb37-27" aria-hidden="true" tabindex="-1"></a>att.g_trig3 <span class="ot">&lt;-</span> <span class="fu">lm</span>(att.g_train <span class="sc">~</span> t_sqrt <span class="sc">+</span> c1fit <span class="sc">+</span> s1fit <span class="sc">+</span> c2fit <span class="sc">+</span> s2fit <span class="sc">+</span> c3fit <span class="sc">+</span> s3fit,</span>
+<span id="cb37-28"><a href="#cb37-28" aria-hidden="true" tabindex="-1"></a>                  <span class="at">data =</span> seasonal_train_df)</span>
+<span id="cb37-29"><a href="#cb37-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-30"><a href="#cb37-30" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(att.g_trig2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = att.g_train ~ t_sqrt + c1fit + s1fit + c2fit + s2fit, 
+    data = seasonal_train_df)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.32014 -1.18458  0.07177  0.99439  2.30610 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)  21.3891     0.6298  33.960  &lt; 2e-16 ***
+t_sqrt        2.1057     0.1328  15.857  &lt; 2e-16 ***
+c1fit         0.7785     0.2852   2.729 0.009562 ** 
+s1fit        -1.0868     0.2821  -3.852 0.000437 ***
+c2fit        -0.1663     0.2774  -0.600 0.552392    
+s2fit         0.7717     0.2798   2.758 0.008883 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.297 on 38 degrees of freedom
+Multiple R-squared:  0.8921,    Adjusted R-squared:  0.8779 
+F-statistic: 62.84 on 5 and 38 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(att.g_trig3)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = att.g_train ~ t_sqrt + c1fit + s1fit + c2fit + s2fit + 
+    c3fit + s3fit, data = seasonal_train_df)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-1.84346 -0.75039 -0.00447  0.64137  2.50943 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)  21.4209     0.6078  35.246  &lt; 2e-16 ***
+t_sqrt        2.0958     0.1281  16.363  &lt; 2e-16 ***
+c1fit         0.7732     0.2751   2.810 0.007958 ** 
+s1fit        -1.0511     0.2721  -3.863 0.000448 ***
+c2fit        -0.1255     0.2684  -0.468 0.642814    
+s2fit         0.8136     0.2701   3.012 0.004732 ** 
+c3fit         0.5684     0.2717   2.092 0.043538 *  
+s3fit         0.2054     0.2650   0.775 0.443523    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.249 on 36 degrees of freedom
+Multiple R-squared:  0.9053,    Adjusted R-squared:  0.8869 
+F-statistic: 49.17 on 7 and 36 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<p>Per <span class="math inline">\(R\)</span>-squared values, both Model 1b and Model 1c have improved performance over their subset counterparts. To determine whether this increase in explained variance is significant based on the added parameters, we can use the Extra Sum of Squares <span class="math inline">\(F\)</span>-test. First, to compare Model 1a (one harmonic) with Model 1b (two harmonics), we have:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(att.g_trig1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Variance Table
+
+Response: att.g_train
+          Df Sum Sq Mean Sq  F value    Pr(&gt;F)    
+t_sqrt     1 473.12  473.12 244.6917 &lt; 2.2e-16 ***
+c1fit      1  13.86   13.86   7.1678 0.0107117 *  
+s1fit      1  28.55   28.55  14.7674 0.0004255 ***
+Residuals 40  77.34    1.93                       
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(att.g_trig2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Variance Table
+
+Response: att.g_train
+          Df Sum Sq Mean Sq  F value    Pr(&gt;F)    
+t_sqrt     1 473.12  473.12 281.0693 &lt; 2.2e-16 ***
+c1fit      1  13.86   13.86   8.2334 0.0066815 ** 
+s1fit      1  28.55   28.55  16.9629 0.0001983 ***
+c2fit      1   0.57    0.57   0.3379 0.5644632    
+s2fit      1  12.81   12.81   7.6088 0.0088827 ** 
+Residuals 38  63.96    1.68                       
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p>From these tables, we calculate</p>
+<p><span class="math display">\[
+\mbox{Extra SS}=77.34-63.96=13.38\\
+\mbox{Extra DF}=40-38=2\\
+\mbox{MS Residuals Full} = 1.68
+\]</span></p>
+<p>Then the Extra SS <span class="math inline">\(F\)</span>-statistic is</p>
+<p><span class="math display">\[
+\frac{\mbox{Extra SS / Extra DF}}{\mbox{MS Residuals Full}}=\frac{(13.38/2)}{1.68)}=3.9821
+\]</span></p>
+<p>This is compared with the <span class="math inline">\(F\)</span>-critical value, which may be computed using qf(0.95, Extra DF, DF Residuals Full):</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">qf</span>(<span class="fl">0.95</span>, <span class="dv">2</span>, <span class="dv">38</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3.244818</code></pre>
+</div>
+</div>
+<p>Since <span class="math inline">\(3.9821&gt;3.2448\)</span>, we reject the null hypothesis (i.e.&nbsp;we reject that the addition of a second harmonic was insignificant), and thus prefer Model 1b to Model 1a. Repeating the same calculations with Model 1c as the full model:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(att.g_trig3)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Variance Table
+
+Response: att.g_train
+          Df Sum Sq Mean Sq  F value    Pr(&gt;F)    
+t_sqrt     1 473.12  473.12 303.3868 &lt; 2.2e-16 ***
+c1fit      1  13.86   13.86   8.8872 0.0051236 ** 
+s1fit      1  28.55   28.55  18.3098 0.0001325 ***
+c2fit      1   0.57    0.57   0.3648 0.5496647    
+s2fit      1  12.81   12.81   8.2129 0.0069045 ** 
+c3fit      1   6.89    6.89   4.4170 0.0426449 *  
+s3fit      1   0.94    0.94   0.6003 0.4435226    
+Residuals 36  56.14    1.56                       
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+<p><span class="math display">\[
+\mbox{Extra SS}=63.96-56.14=7.82\\
+\mbox{Extra DF}=38-36=2\\
+\mbox{MS Residuals Full} = 1.56
+\]</span></p>
+<p><span class="math display">\[
+\implies \frac{\mbox{Extra SS / Extra DF}}{\mbox{MS Residuals Full}}=\frac{(7.82/2)}{1.56)}=2.50641
+\]</span></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="fu">qf</span>(<span class="fl">0.95</span>, <span class="dv">2</span>, <span class="dv">36</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3.259446</code></pre>
+</div>
+</div>
+<p>Since <span class="math inline">\(2.5064&lt;3.2594\)</span>, the Extra SS <span class="math inline">\(F\)</span>-test does <em>not</em> prefer Model 1c over 1b. This points us toward Model 1b. For completeness, we include plots depicting the predicted values from all three models as well as a version zoomed in on the end of the training set.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">1</span>), <span class="at">mar =</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">4</span>, <span class="fl">2.5</span>, <span class="dv">2</span>)) </span>
+<span id="cb51-2"><a href="#cb51-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(att.g_train, <span class="at">xlab =</span> <span class="st">"Time"</span>, <span class="at">ylab =</span> <span class="st">"Att/G"</span>,</span>
+<span id="cb51-3"><a href="#cb51-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Attempts Over Time"</span>)</span>
+<span id="cb51-4"><a href="#cb51-4" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">ts</span>(att.g_trig1<span class="sc">$</span>fit,<span class="at">start=</span><span class="dv">1970</span>,<span class="at">freq=</span><span class="dv">1</span>),</span>
+<span id="cb51-5"><a href="#cb51-5" aria-hidden="true" tabindex="-1"></a>      <span class="at">col=</span><span class="st">"blue"</span>, <span class="at">lty =</span> <span class="st">"dashed"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb51-6"><a href="#cb51-6" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">ts</span>(att.g_trig2<span class="sc">$</span>fit,<span class="at">start=</span><span class="dv">1970</span>,<span class="at">freq=</span><span class="dv">1</span>),</span>
+<span id="cb51-7"><a href="#cb51-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">col=</span><span class="st">"red"</span>, <span class="at">lty =</span> <span class="st">"dotted"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb51-8"><a href="#cb51-8" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">ts</span>(att.g_trig3<span class="sc">$</span>fit,<span class="at">start=</span><span class="dv">1970</span>,<span class="at">freq=</span><span class="dv">1</span>),</span>
+<span id="cb51-9"><a href="#cb51-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">col=</span><span class="st">"green"</span>, <span class="at">lty =</span> <span class="st">"dotdash"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb51-10"><a href="#cb51-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb51-11"><a href="#cb51-11" aria-hidden="true" tabindex="-1"></a><span class="do">### Zoom in on the last five years of training data</span></span>
+<span id="cb51-12"><a href="#cb51-12" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">window</span>(att.g_train, <span class="at">start=</span><span class="dv">2009</span>), <span class="at">xlab =</span> <span class="st">"Time"</span>, <span class="at">ylab =</span> <span class="st">"Att/G"</span>,</span>
+<span id="cb51-13"><a href="#cb51-13" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"2009 - 2013 Window"</span>)</span>
+<span id="cb51-14"><a href="#cb51-14" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">window</span>(<span class="fu">ts</span>(att.g_trig1<span class="sc">$</span>fit, <span class="at">start=</span><span class="dv">1970</span>, <span class="at">freq=</span><span class="dv">1</span>),</span>
+<span id="cb51-15"><a href="#cb51-15" aria-hidden="true" tabindex="-1"></a>             <span class="at">start=</span><span class="dv">2009</span>), <span class="at">col =</span> <span class="st">"blue"</span>, <span class="at">lty =</span> <span class="st">"dashed"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb51-16"><a href="#cb51-16" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">window</span>(<span class="fu">ts</span>(att.g_trig2<span class="sc">$</span>fit, <span class="at">start=</span><span class="dv">1970</span>, <span class="at">freq=</span><span class="dv">1</span>),</span>
+<span id="cb51-17"><a href="#cb51-17" aria-hidden="true" tabindex="-1"></a>             <span class="at">start=</span><span class="dv">2009</span>), <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="st">"dotted"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb51-18"><a href="#cb51-18" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">window</span>(<span class="fu">ts</span>(att.g_trig3<span class="sc">$</span>fit, <span class="at">start=</span><span class="dv">1970</span>, <span class="at">freq=</span><span class="dv">1</span>),</span>
+<span id="cb51-19"><a href="#cb51-19" aria-hidden="true" tabindex="-1"></a>             <span class="at">start=</span><span class="dv">2009</span>), <span class="at">col =</span> <span class="st">"green"</span>, <span class="at">lty =</span> <span class="st">"dotdash"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-28-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Next, we compare the models using AIC, AICc, and BIC.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>num_fit <span class="ot">&lt;-</span> <span class="fu">length</span>(att.g_train)</span>
+<span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>k1 <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">coef</span>(att.g_trig1))</span>
+<span id="cb52-3"><a href="#cb52-3" aria-hidden="true" tabindex="-1"></a>k2 <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">coef</span>(att.g_trig2))</span>
+<span id="cb52-4"><a href="#cb52-4" aria-hidden="true" tabindex="-1"></a>k3 <span class="ot">&lt;-</span> <span class="fu">length</span>(<span class="fu">coef</span>(att.g_trig3))</span>
+<span id="cb52-5"><a href="#cb52-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-6"><a href="#cb52-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Information criteria</span></span>
+<span id="cb52-7"><a href="#cb52-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Verify with each anova table</span></span>
+<span id="cb52-8"><a href="#cb52-8" aria-hidden="true" tabindex="-1"></a>sigsq<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="fu">summary</span>(att.g_trig1)<span class="sc">$</span>sigma<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb52-9"><a href="#cb52-9" aria-hidden="true" tabindex="-1"></a>sigsq<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="fu">summary</span>(att.g_trig2)<span class="sc">$</span>sigma<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb52-10"><a href="#cb52-10" aria-hidden="true" tabindex="-1"></a>sigsq<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="fu">summary</span>(att.g_trig3)<span class="sc">$</span>sigma<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb52-11"><a href="#cb52-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-12"><a href="#cb52-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-13"><a href="#cb52-13" aria-hidden="true" tabindex="-1"></a><span class="co"># AIC</span></span>
+<span id="cb52-14"><a href="#cb52-14" aria-hidden="true" tabindex="-1"></a>AIC<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="fu">AIC</span>(att.g_trig1)</span>
+<span id="cb52-15"><a href="#cb52-15" aria-hidden="true" tabindex="-1"></a>AIC<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="fu">AIC</span>(att.g_trig2)</span>
+<span id="cb52-16"><a href="#cb52-16" aria-hidden="true" tabindex="-1"></a>AIC<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="fu">AIC</span>(att.g_trig3) </span>
+<span id="cb52-17"><a href="#cb52-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Or use AIC(logLik(co2.model1a))</span></span>
+<span id="cb52-18"><a href="#cb52-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Or use AIC(logLik(co2_trig1)) </span></span>
+<span id="cb52-19"><a href="#cb52-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Or use AIC(logLik(co2_trig2))</span></span>
+<span id="cb52-20"><a href="#cb52-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-21"><a href="#cb52-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Corrected AIC</span></span>
+<span id="cb52-22"><a href="#cb52-22" aria-hidden="true" tabindex="-1"></a>AICc<span class="fl">.1</span>a <span class="ot">&lt;-</span> AIC<span class="fl">.1</span>a <span class="sc">+</span> (<span class="dv">2</span><span class="sc">*</span>k1<span class="sc">^</span><span class="dv">2</span> <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>k1)<span class="sc">/</span>(num_fit <span class="sc">-</span> k1 <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb52-23"><a href="#cb52-23" aria-hidden="true" tabindex="-1"></a>AICc<span class="fl">.1</span>b  <span class="ot">&lt;-</span> AIC<span class="fl">.1</span>b  <span class="sc">+</span> (<span class="dv">2</span><span class="sc">*</span>k2<span class="sc">^</span><span class="dv">2</span> <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>k2)<span class="sc">/</span>(num_fit <span class="sc">-</span> k2 <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb52-24"><a href="#cb52-24" aria-hidden="true" tabindex="-1"></a>AICc<span class="fl">.1</span>c  <span class="ot">&lt;-</span> AIC<span class="fl">.1</span>c  <span class="sc">+</span> (<span class="dv">2</span><span class="sc">*</span>k3<span class="sc">^</span><span class="dv">2</span> <span class="sc">+</span> <span class="dv">2</span><span class="sc">*</span>k3)<span class="sc">/</span>(num_fit <span class="sc">-</span> k3 <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb52-25"><a href="#cb52-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-26"><a href="#cb52-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-27"><a href="#cb52-27" aria-hidden="true" tabindex="-1"></a><span class="co"># BIC</span></span>
+<span id="cb52-28"><a href="#cb52-28" aria-hidden="true" tabindex="-1"></a>BIC<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="fu">BIC</span>(att.g_trig1)</span>
+<span id="cb52-29"><a href="#cb52-29" aria-hidden="true" tabindex="-1"></a>BIC<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="fu">BIC</span>(att.g_trig2)</span>
+<span id="cb52-30"><a href="#cb52-30" aria-hidden="true" tabindex="-1"></a>BIC<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="fu">BIC</span>(att.g_trig3)</span>
+<span id="cb52-31"><a href="#cb52-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb52-32"><a href="#cb52-32" aria-hidden="true" tabindex="-1"></a>IC<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">model1a =</span> <span class="fu">rbind</span>(AIC<span class="fl">.1</span>a, AICc<span class="fl">.1</span>a, BIC<span class="fl">.1</span>a), </span>
+<span id="cb52-33"><a href="#cb52-33" aria-hidden="true" tabindex="-1"></a>                    <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">"AIC"</span>, <span class="st">"AICc"</span>, <span class="st">"BIC"</span>))</span>
+<span id="cb52-34"><a href="#cb52-34" aria-hidden="true" tabindex="-1"></a>IC<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">model1b =</span> <span class="fu">rbind</span>(AIC<span class="fl">.1</span>b, AICc<span class="fl">.1</span>b, BIC<span class="fl">.1</span>b), </span>
+<span id="cb52-35"><a href="#cb52-35" aria-hidden="true" tabindex="-1"></a>                    <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">"AIC"</span>, <span class="st">"AICc"</span>, <span class="st">"BIC"</span>))</span>
+<span id="cb52-36"><a href="#cb52-36" aria-hidden="true" tabindex="-1"></a>IC<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">model1c =</span> <span class="fu">rbind</span>(AIC<span class="fl">.1</span>c, AICc<span class="fl">.1</span>c, BIC<span class="fl">.1</span>c), </span>
+<span id="cb52-37"><a href="#cb52-37" aria-hidden="true" tabindex="-1"></a>                    <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">"AIC"</span>, <span class="st">"AICc"</span>, <span class="st">"BIC"</span>))</span>
+<span id="cb52-38"><a href="#cb52-38" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">cbind</span>(IC<span class="fl">.1</span>a, IC<span class="fl">.1</span>b, IC<span class="fl">.1</span>c), <span class="at">digits =</span> <span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      model1a  model1b  model1c
+AIC  159.6844 155.3290 153.5881
+AICc 160.7100 157.5992 157.7024
+BIC  168.6053 167.8183 169.6458</code></pre>
+</div>
+</div>
+<p>Model 1b is preferred by two of the three information criterion. Finally, we look to forecast criterion for one more piece of evidence.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Set up for prediction </span></span>
+<span id="cb54-2"><a href="#cb54-2" aria-hidden="true" tabindex="-1"></a>t_fore <span class="ot">&lt;-</span> <span class="fu">seq_len</span>(<span class="dv">11</span>) <span class="sc">+</span> <span class="dv">44</span>   <span class="co"># future times</span></span>
+<span id="cb54-3"><a href="#cb54-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-4"><a href="#cb54-4" aria-hidden="true" tabindex="-1"></a>seasonal_fore_df_1b <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb54-5"><a href="#cb54-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">t_sqrt =</span> <span class="fu">sqrt</span>(t_fore),</span>
+<span id="cb54-6"><a href="#cb54-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">c1fit  =</span> <span class="fu">cos</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> t_fore <span class="sc">/</span> n_0),</span>
+<span id="cb54-7"><a href="#cb54-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">s1fit  =</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> t_fore <span class="sc">/</span> n_0),</span>
+<span id="cb54-8"><a href="#cb54-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">c2fit  =</span> <span class="fu">cos</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> <span class="dv">2</span> <span class="sc">*</span> t_fore <span class="sc">/</span> n_0),</span>
+<span id="cb54-9"><a href="#cb54-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">s2fit  =</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> <span class="dv">2</span> <span class="sc">*</span> t_fore <span class="sc">/</span> n_0)</span>
+<span id="cb54-10"><a href="#cb54-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb54-11"><a href="#cb54-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-12"><a href="#cb54-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-13"><a href="#cb54-13" aria-hidden="true" tabindex="-1"></a>seasonal_fore_df <span class="ot">&lt;-</span><span class="fu">tibble</span>(</span>
+<span id="cb54-14"><a href="#cb54-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">t_fit =</span> t_fore,</span>
+<span id="cb54-15"><a href="#cb54-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">t_sqrt =</span> <span class="fu">sqrt</span>(t_fit),              </span>
+<span id="cb54-16"><a href="#cb54-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">c1fit  =</span> <span class="fu">cos</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> t_fore<span class="sc">/</span>n_0),</span>
+<span id="cb54-17"><a href="#cb54-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">s1fit  =</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> t_fore<span class="sc">/</span>n_0),</span>
+<span id="cb54-18"><a href="#cb54-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">c2fit  =</span> <span class="fu">cos</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> <span class="dv">2</span> <span class="sc">*</span> t_fore<span class="sc">/</span>n_0),</span>
+<span id="cb54-19"><a href="#cb54-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">s2fit  =</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> <span class="dv">2</span> <span class="sc">*</span> t_fore<span class="sc">/</span>n_0),</span>
+<span id="cb54-20"><a href="#cb54-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">c3fit  =</span> <span class="fu">cos</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> <span class="dv">3</span> <span class="sc">*</span> t_fore<span class="sc">/</span>n_0),</span>
+<span id="cb54-21"><a href="#cb54-21" aria-hidden="true" tabindex="-1"></a>  <span class="at">s3fit  =</span> <span class="fu">sin</span>(<span class="dv">2</span> <span class="sc">*</span> pi <span class="sc">*</span> <span class="dv">3</span> <span class="sc">*</span> t_fore<span class="sc">/</span>n_0)</span>
+<span id="cb54-22"><a href="#cb54-22" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb54-23"><a href="#cb54-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-24"><a href="#cb54-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-25"><a href="#cb54-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1a</span></span>
+<span id="cb54-26"><a href="#cb54-26" aria-hidden="true" tabindex="-1"></a>pfore<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="fu">predict</span>(att.g_trig1, <span class="at">newdata =</span> seasonal_fore_df, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb54-27"><a href="#cb54-27" aria-hidden="true" tabindex="-1"></a>efore<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(att.g_fore) <span class="sc">-</span> <span class="fu">as.numeric</span>(pfore<span class="fl">.1</span>a<span class="sc">$</span>fit)</span>
+<span id="cb54-28"><a href="#cb54-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-29"><a href="#cb54-29" aria-hidden="true" tabindex="-1"></a>me<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="fu">mean</span>(efore<span class="fl">.1</span>a)</span>
+<span id="cb54-30"><a href="#cb54-30" aria-hidden="true" tabindex="-1"></a>mpe<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="dv">100</span> <span class="sc">*</span> (<span class="fu">mean</span>(<span class="fu">as.numeric</span>(efore<span class="fl">.1</span>a) <span class="sc">/</span> <span class="fu">as.numeric</span>(att.g_fore)))</span>
+<span id="cb54-31"><a href="#cb54-31" aria-hidden="true" tabindex="-1"></a>mse<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="fu">sum</span>(efore<span class="fl">.1</span>a<span class="sc">**</span><span class="dv">2</span>) <span class="sc">/</span> nfore</span>
+<span id="cb54-32"><a href="#cb54-32" aria-hidden="true" tabindex="-1"></a>mae<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">abs</span>(efore<span class="fl">.1</span>a))</span>
+<span id="cb54-33"><a href="#cb54-33" aria-hidden="true" tabindex="-1"></a>mape<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="dv">100</span> <span class="sc">*</span> (<span class="fu">mean</span>(<span class="fu">abs</span>(efore<span class="fl">.1</span>a) <span class="sc">/</span> <span class="fu">as.numeric</span>(att.g_fore)))</span>
+<span id="cb54-34"><a href="#cb54-34" aria-hidden="true" tabindex="-1"></a>fec<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">model1a =</span> <span class="fu">rbind</span>(me<span class="fl">.1</span>a, mpe<span class="fl">.1</span>a, mse<span class="fl">.1</span>a, mae<span class="fl">.1</span>a, mape<span class="fl">.1</span>a), </span>
+<span id="cb54-35"><a href="#cb54-35" aria-hidden="true" tabindex="-1"></a>                     <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">"me"</span>, <span class="st">"mpe"</span>, <span class="st">"mse"</span>, <span class="st">"mae"</span>, <span class="st">"mape"</span>))</span>
+<span id="cb54-36"><a href="#cb54-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-37"><a href="#cb54-37" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1b</span></span>
+<span id="cb54-38"><a href="#cb54-38" aria-hidden="true" tabindex="-1"></a>pfore<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="fu">predict</span>(att.g_trig2, <span class="at">newdata =</span> seasonal_fore_df, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb54-39"><a href="#cb54-39" aria-hidden="true" tabindex="-1"></a>efore<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(att.g_fore) <span class="sc">-</span> <span class="fu">as.numeric</span>(pfore<span class="fl">.1</span>b<span class="sc">$</span>fit)</span>
+<span id="cb54-40"><a href="#cb54-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-41"><a href="#cb54-41" aria-hidden="true" tabindex="-1"></a>me<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="fu">mean</span>(efore<span class="fl">.1</span>b)</span>
+<span id="cb54-42"><a href="#cb54-42" aria-hidden="true" tabindex="-1"></a>mpe<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="dv">100</span> <span class="sc">*</span> (<span class="fu">mean</span>(efore<span class="fl">.1</span>b <span class="sc">/</span> att.g_fore))</span>
+<span id="cb54-43"><a href="#cb54-43" aria-hidden="true" tabindex="-1"></a>mse<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="fu">sum</span>(efore<span class="fl">.1</span>b<span class="sc">**</span><span class="dv">2</span>) <span class="sc">/</span> nfore</span>
+<span id="cb54-44"><a href="#cb54-44" aria-hidden="true" tabindex="-1"></a>mae<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">abs</span>(efore<span class="fl">.1</span>b))</span>
+<span id="cb54-45"><a href="#cb54-45" aria-hidden="true" tabindex="-1"></a>mape<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="dv">100</span> <span class="sc">*</span> (<span class="fu">mean</span>(<span class="fu">abs</span>(efore<span class="fl">.1</span>b) <span class="sc">/</span> att.g_fore))</span>
+<span id="cb54-46"><a href="#cb54-46" aria-hidden="true" tabindex="-1"></a>fec<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">model1b =</span> <span class="fu">rbind</span>(me<span class="fl">.1</span>b, mpe<span class="fl">.1</span>b, mse<span class="fl">.1</span>b, mae<span class="fl">.1</span>b, mape<span class="fl">.1</span>b), </span>
+<span id="cb54-47"><a href="#cb54-47" aria-hidden="true" tabindex="-1"></a>                     <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">"me"</span>, <span class="st">"mpe"</span>, <span class="st">"mse"</span>, <span class="st">"mae"</span>, <span class="st">"mape"</span>))</span>
+<span id="cb54-48"><a href="#cb54-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-49"><a href="#cb54-49" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1c</span></span>
+<span id="cb54-50"><a href="#cb54-50" aria-hidden="true" tabindex="-1"></a>pfore<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="fu">predict</span>(att.g_trig3, seasonal_fore_df, <span class="at">se.fit =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb54-51"><a href="#cb54-51" aria-hidden="true" tabindex="-1"></a>efore<span class="fl">.1</span>c <span class="ot">&lt;-</span> att.g_fore <span class="sc">-</span> pfore<span class="fl">.1</span>c<span class="sc">$</span>fit</span>
+<span id="cb54-52"><a href="#cb54-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb54-53"><a href="#cb54-53" aria-hidden="true" tabindex="-1"></a>me<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="fu">mean</span>(efore<span class="fl">.1</span>c)</span>
+<span id="cb54-54"><a href="#cb54-54" aria-hidden="true" tabindex="-1"></a>mpe<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="dv">100</span> <span class="sc">*</span> (<span class="fu">mean</span>(efore<span class="fl">.1</span>c <span class="sc">/</span> att.g_fore))</span>
+<span id="cb54-55"><a href="#cb54-55" aria-hidden="true" tabindex="-1"></a>mse<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="fu">sum</span>(efore<span class="fl">.1</span>c<span class="sc">**</span><span class="dv">2</span>) <span class="sc">/</span> nfore</span>
+<span id="cb54-56"><a href="#cb54-56" aria-hidden="true" tabindex="-1"></a>mae<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">abs</span>(efore<span class="fl">.1</span>c))</span>
+<span id="cb54-57"><a href="#cb54-57" aria-hidden="true" tabindex="-1"></a>mape<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="dv">100</span> <span class="sc">*</span> (<span class="fu">mean</span>(<span class="fu">abs</span>(efore<span class="fl">.1</span>c) <span class="sc">/</span> att.g_fore))</span>
+<span id="cb54-58"><a href="#cb54-58" aria-hidden="true" tabindex="-1"></a>fec<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">model1c =</span> <span class="fu">rbind</span>(me<span class="fl">.1</span>c, mpe<span class="fl">.1</span>c, mse<span class="fl">.1</span>c, mae<span class="fl">.1</span>c, mape<span class="fl">.1</span>c), </span>
+<span id="cb54-59"><a href="#cb54-59" aria-hidden="true" tabindex="-1"></a>                     <span class="at">row.names =</span> <span class="fu">c</span>(<span class="st">"me"</span>, <span class="st">"mpe"</span>, <span class="st">"mse"</span>, <span class="st">"mae"</span>, <span class="st">"mape"</span>))</span>
+<span id="cb54-60"><a href="#cb54-60" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">cbind</span>(fec<span class="fl">.1</span>a, fec<span class="fl">.1</span>b, fec<span class="fl">.1</span>c), <span class="at">digits =</span> <span class="dv">4</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     model1a model1b model1c
+me   -0.5582 -0.3776 -0.3308
+mpe  -1.6929 -1.1797 -1.0708
+mse   1.7834  1.5653  2.1247
+mae   0.8659  0.9832  1.1489
+mape  2.5330  2.8160  3.2803</code></pre>
+</div>
+</div>
+<p>Interestingly, Model 1a is decently strong, with the best MAPE and MAE. Model 1b claims the superior MSE, while Model 1c produces the best ME and MPE. To see the corresponding plots:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot of time series with fits and out-of-sample forecasts</span></span>
+<span id="cb56-2"><a href="#cb56-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Model 1a fits and forecasts</span></span>
+<span id="cb56-3"><a href="#cb56-3" aria-hidden="true" tabindex="-1"></a>ff<span class="fl">.1</span>a <span class="ot">&lt;-</span> <span class="fu">ts</span>(pfore<span class="fl">.1</span>a<span class="sc">$</span>fit,</span>
+<span id="cb56-4"><a href="#cb56-4" aria-hidden="true" tabindex="-1"></a>             <span class="at">start =</span> <span class="fu">start</span>(att.g_fore),</span>
+<span id="cb56-5"><a href="#cb56-5" aria-hidden="true" tabindex="-1"></a>             <span class="at">frequency =</span> <span class="fu">frequency</span>(att.g_fore))</span>
+<span id="cb56-6"><a href="#cb56-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-7"><a href="#cb56-7" aria-hidden="true" tabindex="-1"></a>ff<span class="fl">.1</span>b <span class="ot">&lt;-</span> <span class="fu">ts</span>(pfore<span class="fl">.1</span>b<span class="sc">$</span>fit,</span>
+<span id="cb56-8"><a href="#cb56-8" aria-hidden="true" tabindex="-1"></a>             <span class="at">start =</span> <span class="fu">start</span>(att.g_fore),</span>
+<span id="cb56-9"><a href="#cb56-9" aria-hidden="true" tabindex="-1"></a>             <span class="at">frequency =</span> <span class="fu">frequency</span>(att.g_fore))</span>
+<span id="cb56-10"><a href="#cb56-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-11"><a href="#cb56-11" aria-hidden="true" tabindex="-1"></a>ff<span class="fl">.1</span>c <span class="ot">&lt;-</span> <span class="fu">ts</span>(pfore<span class="fl">.1</span>c<span class="sc">$</span>fit,</span>
+<span id="cb56-12"><a href="#cb56-12" aria-hidden="true" tabindex="-1"></a>             <span class="at">start =</span> <span class="fu">start</span>(att.g_fore),</span>
+<span id="cb56-13"><a href="#cb56-13" aria-hidden="true" tabindex="-1"></a>             <span class="at">frequency =</span> <span class="fu">frequency</span>(att.g_fore))</span>
+<span id="cb56-14"><a href="#cb56-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb56-15"><a href="#cb56-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot</span></span>
+<span id="cb56-16"><a href="#cb56-16" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(<span class="fu">cbind</span>(att.g_fore, ff<span class="fl">.1</span>a, ff<span class="fl">.1</span>b, ff<span class="fl">.1</span>c), <span class="at">main =</span> <span class="st">"Attempts Per Game: 2014-2024"</span>, <span class="at">ylab =</span> <span class="st">"Att/G"</span>,</span>
+<span id="cb56-17"><a href="#cb56-17" aria-hidden="true" tabindex="-1"></a>        <span class="at">col =</span> <span class="fu">c</span>(<span class="st">"black"</span>, <span class="st">"blue"</span>, <span class="st">"red"</span>, <span class="st">"green"</span>), <span class="at">lwd =</span> <span class="dv">2</span>,</span>
+<span id="cb56-18"><a href="#cb56-18" aria-hidden="true" tabindex="-1"></a>        <span class="at">lty =</span> <span class="fu">c</span>(<span class="st">"solid"</span>, <span class="st">"dashed"</span>, <span class="st">"dotted"</span>, <span class="st">"dotdash"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-31-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>None of the models seems to follow what happens with the data beyond the training set, which is not surprising given the sizeable downturn after 2016. We will next explore a different model class.</p>
+</section>
+</section>
+<section id="smoothing-with-holt-winters" class="level3">
+<h3 class="anchored" data-anchor-id="smoothing-with-holt-winters">4. Smoothing with Holt-Winters</h3>
+<p>We can use Holt-Winters exponential smoothing to estimate the level and trend of the data, though not with a seasonal parameter because our data is annual (frequency 1). Attempts with and without damping are made.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(forecast)</span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Attempt to damp</span></span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a>hw.damped <span class="ot">&lt;-</span> <span class="fu">holt</span>(att.g_train, <span class="at">damped=</span><span class="cn">TRUE</span>, <span class="at">h=</span><span class="dv">11</span>)</span>
+<span id="cb57-5"><a href="#cb57-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-6"><a href="#cb57-6" aria-hidden="true" tabindex="-1"></a><span class="co">#Undamped</span></span>
+<span id="cb57-7"><a href="#cb57-7" aria-hidden="true" tabindex="-1"></a>dexp.smooth <span class="ot">&lt;-</span> <span class="fu">HoltWinters</span>(att.g_train, <span class="at">gamma =</span> F) </span>
+<span id="cb57-8"><a href="#cb57-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-9"><a href="#cb57-9" aria-hidden="true" tabindex="-1"></a><span class="co">#Forecast values with interval about them</span></span>
+<span id="cb57-10"><a href="#cb57-10" aria-hidden="true" tabindex="-1"></a>dexp.fore <span class="ot">&lt;-</span> <span class="fu">predict</span>(dexp.smooth, <span class="dv">11</span>, <span class="at">prediction.interval =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb57-11"><a href="#cb57-11" aria-hidden="true" tabindex="-1"></a>dexp.damped.fore <span class="ot">&lt;-</span> <span class="fu">predict</span>(hw.damped, <span class="dv">11</span>, <span class="at">prediction.interval =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb57-12"><a href="#cb57-12" aria-hidden="true" tabindex="-1"></a><span class="co">#Visualize result</span></span>
+<span id="cb57-13"><a href="#cb57-13" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(dexp.smooth, dexp.fore, <span class="at">xlab =</span> <span class="st">"time"</span>, <span class="at">ylab =</span> <span class="st">"Att/G"</span>, </span>
+<span id="cb57-14"><a href="#cb57-14" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylim =</span> <span class="fu">c</span>(<span class="dv">18</span>, <span class="dv">70</span>), <span class="at">main =</span> <span class="st">"Attempts Over Time: Holt Forecast"</span>)</span>
+<span id="cb57-15"><a href="#cb57-15" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="dv">2014</span><span class="sc">:</span><span class="dv">2024</span>, hw.damped<span class="sc">$</span>mean, <span class="at">col =</span> <span class="st">"orange"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span>
+<span id="cb57-16"><a href="#cb57-16" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="dv">2014</span><span class="sc">:</span><span class="dv">2024</span>, hw.damped<span class="sc">$</span>lower[,<span class="dv">2</span>], <span class="at">col =</span> <span class="st">"navy"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb57-17"><a href="#cb57-17" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="dv">2014</span><span class="sc">:</span><span class="dv">2024</span>, hw.damped<span class="sc">$</span>upper[,<span class="dv">2</span>], <span class="at">col =</span> <span class="st">"navy"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb57-18"><a href="#cb57-18" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="at">x =</span> <span class="dv">1970</span><span class="sc">:</span> <span class="dv">2024</span>, <span class="at">y =</span> top_15_qb.att_ts)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="nfl_ts_analysis_files/figure-html/unnamed-chunk-32-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Unfortunately, the trend from ~ 2005-2013 is captured by both models and then extended in some fashion for 2014-2024, which does not match reality. The predicted values for the undamped model are depicted in red, with solid light blue confidence intervals. The forecast values for the damped model are displayed in orange, with dark blue dashed confidence intervals.</p>
+</section>
+<section id="conclusions" class="level3">
+<h3 class="anchored" data-anchor-id="conclusions">5. Conclusions</h3>
+<p>While there is a distinct increasing trend <span class="math inline">\(\sim\sqrt{t}\)</span> in the number of attempts per game among the top fifteen passers of the ball each year, periodicity of this phenomenon is more difficult to conclusively identify. In a future work, one might consider the use of an ARIMA-type model, in particular ARIMA(0,1,0), as this small data set resembles a random walk in some respects. Indeed, we part with:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb58"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a>att.g_arima <span class="ot">&lt;-</span> <span class="fu">auto.arima</span>(top_15_qb.att_ts, <span class="at">ic=</span><span class="st">'aicc'</span>, <span class="at">max.d=</span><span class="dv">2</span>, <span class="at">seasonal =</span> <span class="cn">FALSE</span>, <span class="at">allowdrift =</span> <span class="cn">TRUE</span>, <span class="at">trace =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ ARIMA(2,1,2) with drift         : Inf
+ ARIMA(0,1,0) with drift         : 190.6718
+ ARIMA(1,1,0) with drift         : 192.8998
+ ARIMA(0,1,1) with drift         : 192.8965
+ ARIMA(0,1,0)                    : 189.0477
+ ARIMA(1,1,1) with drift         : 195.2094
+
+ Best model: ARIMA(0,1,0)                    </code></pre>
+</div>
+</div>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
