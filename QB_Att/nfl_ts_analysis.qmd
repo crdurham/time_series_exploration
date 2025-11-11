@@ -1,7 +1,9 @@
 ---
 title: "NFL Time Series"
 author: "Cole Durham"
-format: pdf
+format:
+  gfm:
+    embed-resources: true
 editor: visual
 ---
 
